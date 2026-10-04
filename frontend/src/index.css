@@ -1,0 +1,131 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ==================================================================
+   Design tokens
+
+   Every colour in the app comes from this file. Components use the
+   semantic names (bg-surface, text-muted, border-line) instead of
+   raw palette classes, so re-theming means editing these variables
+   and nothing else - no `dark:` duplicates scattered across JSX.
+
+   `inline` makes the generated utilities reference the variables
+   directly, which is what lets the .dark block below re-point them
+   at runtime.
+   ================================================================== */
+
+:root {
+  /* Warm paper light theme */
+  --canvas: #faf7f2;
+  --surface: #ffffff;
+  --surface-2: #f3ede3;
+  --line: #e6ddcd;
+  --ink: #1c1917;
+  --muted: #79716b;
+
+  /* Amber 700 keeps white text at ~5.9:1 */
+  --accent: #b45309;
+  --accent-hover: #92400e;
+  --accent-ink: #ffffff;
+  --accent-soft: #fef3c7;
+  --accent-text: #92400e;
+
+  --danger: #be123c;
+  --danger-soft: #ffe4e6;
+  --danger-text: #9f1239;
+  --success: #047857;
+  --success-dot: #10b981;
+
+  --shadow-soft: 0 1px 2px rgb(28 25 23 / 0.05);
+  --shadow-card: 0 1px 3px rgb(28 25 23 / 0.07),
+    0 8px 24px -12px rgb(28 25 23 / 0.12);
+}
+
+.dark {
+  /* Warm charcoal dark theme */
+  --canvas: #141210;
+  --surface: #1c1917;
+  --surface-2: #26221e;
+  --line: #38322c;
+  --ink: #f5f1ea;
+  --muted: #a39b90;
+
+  /* Brighter amber pops on charcoal; text on it goes near-black */
+  --accent: #f59e0b;
+  --accent-hover: #fbbf24;
+  --accent-ink: #1a1305;
+  --accent-soft: #3b2e12;
+  --accent-text: #fcd34d;
+
+  --danger: #fb7185;
+  --danger-soft: #3f1418;
+  --danger-text: #fda4af;
+  --success: #34d399;
+  --success-dot: #34d399;
+
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-card: 0 1px 3px rgb(0 0 0 / 0.5),
+    0 8px 24px -12px rgb(0 0 0 / 0.6);
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-text: var(--danger-text);
+  --color-success: var(--success);
+  --color-success-dot: var(--success-dot);
+
+  --shadow-soft: var(--shadow-soft);
+  --shadow-card: var(--shadow-card);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Warm, barely-there wash over the page so large empty areas do not
+   read as flat grey. */
+body {
+  background-color: var(--canvas);
+  background-image: radial-gradient(
+    60rem 30rem at 50% -10rem,
+    color-mix(in oklab, var(--accent) 8%, transparent),
+    transparent 70%
+  );
+  background-attachment: fixed;
+}
+
+/* Respect users who ask for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
