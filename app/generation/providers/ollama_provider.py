@@ -1,5 +1,6 @@
 import base64
 import logging
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -59,12 +60,20 @@ class OllamaMultimodalProvider(BaseMultimodalProvider):
             headers=headers,
         )
 
-    def generate(
+    def _build_messages(
         self,
         query: str,
         text_context: list[dict[str, Any]],
         image_context: list[dict[str, Any]],
-    ) -> str:
+        conversation: str | None = None,
+    ) -> tuple[list[dict[str, Any]], bool]:
+        """
+        Build the chat messages for a request.
+
+        Shared by generate() and stream() so both paths prompt the
+        model identically. Returns the messages and whether an
+        attachment was included.
+        """
         text_parts = []
 
         for item in text_context:
@@ -116,6 +125,18 @@ class OllamaMultimodalProvider(BaseMultimodalProvider):
                 base64.b64encode(path.read_bytes()).decode("utf-8")
             )
 
+        # Earlier turns let the model resolve a follow-up ("what
+        # about its warranty?"). They are context only: the grounding
+        # rules above still bind the answer to the retrieved
+        # documents.
+        conversation_section = (
+            f"\n\nEarlier in this conversation "
+            "(for resolving references only):\n"
+            f"{conversation}\n"
+            if conversation
+            else ""
+        )
+
         if has_attachment:
             # The document-grounded prompt makes the model treat the
             # retrieved context as the only admissible evidence, so
@@ -145,7 +166,7 @@ Rules you must follow:
             user_prompt = f"""
 User question:
 {query}
-
+{conversation_section}
 The FIRST image below is the image the user attached. It is the
 subject of the question - answer the question about it.
 
@@ -172,8 +193,7 @@ Rules you must follow:
             user_prompt = f"""
 User question:
 {query}
-
-Text context:
+{conversation_section}Text context:
 {text_context_text}
 
 Use the provided images as visual evidence when they are relevant
@@ -203,6 +223,22 @@ context above.
                 has_attachment,
             )
 
+        return messages, has_attachment
+
+    def generate(
+        self,
+        query: str,
+        text_context: list[dict[str, Any]],
+        image_context: list[dict[str, Any]],
+        conversation: str | None = None,
+    ) -> str:
+        messages, _ = self._build_messages(
+            query=query,
+            text_context=text_context,
+            image_context=image_context,
+            conversation=conversation,
+        )
+
         try:
             response = self.client.chat(
                 model=self.model,
@@ -228,3 +264,59 @@ context above.
             ) from exc
 
         return response["message"]["content"]
+
+    # ------------------------------------------------------------
+    # Streaming
+    # ------------------------------------------------------------
+
+    def stream(
+        self,
+        query: str,
+        text_context: list[dict[str, Any]],
+        image_context: list[dict[str, Any]],
+        conversation: str | None = None,
+    ) -> Iterator[str]:
+        """
+        Yield the answer incrementally.
+
+        The SDK raises mid-iteration once the stream is open, so the
+        whole iteration is wrapped: a failure after some text has
+        already been emitted must surface as a provider error rather
+        than ending the stream early and looking like a short answer.
+        """
+        messages, _ = self._build_messages(
+            query=query,
+            text_context=text_context,
+            image_context=image_context,
+            conversation=conversation,
+        )
+
+        try:
+            stream = self.client.chat(
+                model=self.model,
+                messages=messages,
+                stream=True,
+            )
+
+            for part in stream:
+                text = part["message"]["content"]
+                if text:
+                    yield text
+
+        except httpx.TimeoutException as exc:
+            raise ProviderTimeoutError(
+                f"Ollama request timed out "
+                f"for model: {self.model}"
+            ) from exc
+
+        except httpx.ConnectError as exc:
+            raise ProviderError(
+                f"Could not connect to Ollama at "
+                f"{self.base_url}. Is the server running?"
+            ) from exc
+
+        except ResponseError as exc:
+            raise ProviderError(
+                f"Ollama returned an error "
+                f"for model: {self.model}"
+            ) from exc

@@ -1,0 +1,15 @@
+# Keep the build context small and reproducible.
+node_modules
+dist
+
+# Local-only configuration must never enter an image layer.
+.env
+.env.local
+
+__pycache__
+*.log
+npm-debug.log*
+
+.DS_Store
+.vscode
+.idea

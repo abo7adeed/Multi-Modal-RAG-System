@@ -39,9 +39,46 @@ class AppState:
     )
 
 
+def validate_provider_settings() -> None:
+    """
+    Refuse to start with an unusable generation provider.
+
+    Without this the app boots happily and every query fails with a
+    generic 503, which looks like a provider outage rather than a
+    missing key. Failing at startup turns a silent misconfiguration
+    into an immediate, obvious error.
+
+    Raises ValueError with an actionable message.
+    """
+    provider = settings.generation_provider
+
+    # A local Ollama server has no auth, so an empty key is correct
+    # there. None means "no key needed"; "" means "a key is required
+    # and none was supplied" - the distinction is the whole point.
+    if provider == "ollama" and not settings.ollama_base_url.startswith(
+        "https://"
+    ):
+        return
+
+    key = {
+        "openrouter": settings.openrouter_api_key,
+        "opencode": settings.opencode_api_key,
+        "ollama": settings.ollama_api_key,
+    }[provider]
+
+    if not key:
+        raise ValueError(
+            f"No API key configured for provider {provider!r}. "
+            f"Set {provider.upper()}_API_KEY in the environment "
+            f"(or .env) before starting the server."
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("startup: loading retrieval and generation components")
+
+    validate_provider_settings()
 
     embedder = CLIPEmbedder()
 

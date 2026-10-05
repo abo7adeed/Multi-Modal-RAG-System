@@ -9,6 +9,7 @@ import logging
 from pathlib import Path, PureWindowsPath
 
 from fastapi import UploadFile
+from starlette.concurrency import run_in_threadpool
 
 from app.config import settings
 from app.errors import DocumentIngestionError, InvalidRequestError
@@ -91,9 +92,14 @@ class DocumentIngestionService:
 
         # --------------------------------------------------------
         # Ingest through the existing pipeline
+        #
+        # Parsing, chunking and CLIP embedding are blocking work, so
+        # they run in a worker thread. Doing them inline in this
+        # async method would stall the event loop (and every other
+        # in-flight request) for the whole ingestion.
         # --------------------------------------------------------
         try:
-            return self._ingest(upload_path)
+            return await run_in_threadpool(self._ingest, upload_path)
         except (InvalidRequestError, DocumentIngestionError):
             raise
         except Exception as exc:
@@ -241,3 +247,36 @@ class DocumentIngestionService:
 
         normalizer = ImageNormalizer()
         return normalizer.normalize(image_path, output_path)
+
+    async def delete_document(self, document_id: str) -> dict:
+        """
+        Remove a document from the index.
+
+        Returns the number of chunks deleted. Raises
+        DocumentNotFoundError when the id matches nothing, so the API
+        can answer 404 rather than a misleading 200 with a zero
+        count.
+        """
+        document_id = (document_id or "").strip()
+
+        if not document_id:
+            raise InvalidRequestError(
+                "A document id is required."
+            )
+
+        # Chroma is blocking I/O; a delete can touch hundreds of
+        # chunks, so it must not run on the event loop.
+        removed = await run_in_threadpool(
+            self.retriever.delete_document, document_id
+        )
+
+        if not removed:
+            raise DocumentNotFoundError(document_id)
+
+        logger.info(
+            "document_deleted document_id=%s chunks=%d",
+            document_id,
+            removed,
+        )
+
+        return {"document_id": document_id, "chunks_deleted": removed}

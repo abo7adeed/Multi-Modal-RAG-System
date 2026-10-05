@@ -166,8 +166,61 @@ class BM25Index:
                 "score": score,
                 "rank": rank,
                 "document": self.documents[doc_id],
-            }
-            for rank, (doc_id, score) in enumerate(
+            }            for rank, (doc_id, score) in enumerate(
                 scores[:top_k], start=1
             )
         ]
+
+    # ------------------------------------------------------------
+    # Relevance signal
+    # ------------------------------------------------------------
+
+    def keyword_relevance(self, query: str) -> dict[str, Any]:
+        """
+        How well a query's own terms are grounded in the corpus.
+
+        BM25 non-emptiness alone is a weak relevance signal: one
+        common word is enough to make an unrelated question "match".
+        This measures the share of the query's content terms that
+        actually exist in the index, weighted by rarity, and pairs it
+        with the best BM25 score. Off-topic questions that merely
+        borrow a common word score low on both.
+        """
+        terms = list(dict.fromkeys(tokenize(query)))
+
+        if not terms:
+            return {
+                "coverage": 0.0,
+                "matched": 0,
+                "total": 0,
+                "top_score": 0.0,
+            }
+
+        # A term the corpus has never seen is as rare as it gets. It
+        # is the strongest evidence the query is about something this
+        # index knows nothing about, so it must not be ignored.
+        rarest = max(self.idf.values()) if self.idf else 0.0
+
+        weight_total = 0.0
+        weight_matched = 0.0
+        matched = 0
+
+        for term in terms:
+            weight = self.idf.get(term, rarest)
+            weight_total += weight
+            if term in self.idf:
+                weight_matched += weight
+                matched += 1
+
+        top = self.search(query, top_k=1)
+
+        return {
+            "coverage": (
+                weight_matched / weight_total
+                if weight_total
+                else 0.0
+            ),
+            "matched": matched,
+            "total": len(terms),
+            "top_score": top[0]["score"] if top else 0.0,
+        }

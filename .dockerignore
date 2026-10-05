@@ -1,0 +1,35 @@
+# Keep the build context small and the image reproducible: nothing
+# here is needed to build or run the application.
+
+.git
+.gitignore
+.github
+
+# Secrets must never enter an image layer.
+.env
+*.local
+
+# Virtual environments are rebuilt by the Dockerfile.
+.venv
+venv
+
+__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# Tests and tooling are not part of the runtime image.
+tests
+
+# Local data: uploads, the Chroma store and extracted images are
+# mounted as volumes, and this data is host-specific.
+data
+
+# Large local artefacts.
+demo
+*.log
+frontend
+frontend/node_modules
+frontend/dist

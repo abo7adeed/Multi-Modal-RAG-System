@@ -1,6 +1,13 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
+from app.generation.conversation import MAX_HISTORY_TURNS
 from app.pipeline import MAX_QUERY_LENGTH
+
+#: Per-turn cap. Bounds the prompt against a client that sends very
+#: long messages.
+MAX_TURN_CHARS = 2000
 
 
 class ImageAttachmentRequest(BaseModel):
@@ -32,6 +39,25 @@ class ImageAttachmentRequest(BaseModel):
     )
 
 
+class ConversationTurnRequest(BaseModel):
+    """
+    One earlier message, sent by the client so the server can resolve
+    follow-up questions.
+
+    The client owns the transcript: the API keeps no per-session
+    state, which keeps it stateless and scalable. History only
+    influences retrieval and prompt context - never which documents
+    are admissible evidence.
+    """
+
+    role: Literal["user", "assistant"]
+    content: str = Field(
+        ...,
+        max_length=MAX_TURN_CHARS,
+        description="Message text.",
+    )
+
+
 class RAGQueryRequest(BaseModel):
     query: str = Field(
         ...,
@@ -48,6 +74,24 @@ class RAGQueryRequest(BaseModel):
             "retrieved as supporting context."
         ),
     )
+    max_sources: int | None = Field(
+        default=None,
+        ge=1,
+        le=10,
+        description=(
+            "How many ranked sources to return. Defaults to "
+            "API_MAX_SOURCES."
+        ),
+    )
+    history: list[ConversationTurnRequest] = Field(
+        default_factory=list,
+        max_length=MAX_HISTORY_TURNS,
+        description=(
+            "Recent conversation turns, oldest first, used to "
+            "resolve follow-up questions such as 'what about its "
+            "warranty?'. Only the most recent turns are used."
+        ),
+    )
 
 
 class SourceResponse(BaseModel):
@@ -60,6 +104,10 @@ class SourceResponse(BaseModel):
     image_url: str | None = None
     # Matched text preview (null for image sources).
     snippet: str | None = None
+    # Retrieval rank score, for ordering/labelling in the UI.
+    score: float | None = None
+    # "document" for an indexed chunk that grounds the answer.
+    kind: str = "document"
 
 
 class RAGQueryResponse(BaseModel):

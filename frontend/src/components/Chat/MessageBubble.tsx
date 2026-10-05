@@ -39,12 +39,13 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
           className={`overflow-hidden rounded-2xl px-4 py-3 text-sm leading-relaxed ${
             isUser
               ? 'rounded-br-md bg-accent text-accent-ink shadow-soft'
-              : hasError
+              : hasError && !message.content
                 ? 'rounded-bl-md border border-danger/30 bg-danger-soft text-danger-text'
                 : 'rounded-bl-md border border-line bg-surface text-ink shadow-soft'
           }`}
         >
-          {hasError ? (
+          {hasError && !message.content ? (
+            // Nothing was received: the error is all there is to show.
             <div className="flex flex-col gap-2">
               <p>⚠️ {message.error}</p>
               {onRetry && (
@@ -54,11 +55,43 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
               )}
             </div>
           ) : (
-            message.content && (
-              <p className="whitespace-pre-wrap">{message.content}</p>
-            )
+            <>
+              {message.content && (
+                <p className="whitespace-pre-wrap">
+                  {message.content}
+                  {/* A caret marks the answer as still arriving, so a
+                      partially-written reply is never mistaken for a
+                      finished one. */}
+                  {message.isStreaming && (
+                    <span
+                      aria-hidden="true"
+                      className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-ink align-text-bottom"
+                    />
+                  )}
+                </p>
+              )}
+              {/* A stream that failed after tokens arrived keeps the
+                  text it received - the note below says it is
+                  incomplete rather than hiding real content. */}
+              {hasError && onRetry && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={onRetry}
+                  className="mt-2"
+                >
+                  Retry
+                </Button>
+              )}
+            </>
           )}
         </div>
+
+        {!isUser && message.error && message.content && (
+          <p className="mt-1 px-1 text-xs text-danger-text">
+            ⚠️ This answer may be incomplete: {message.error}
+          </p>
+        )}
 
         {!isUser && message.sources && message.sources.length > 0 && (
           <SourceList sources={message.sources} />

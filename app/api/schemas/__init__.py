@@ -1,5 +1,6 @@
-from .documents import DocumentUploadResponse
+from .documents import DocumentDeleteResponse, DocumentUploadResponse
 from .rag import (
+    ConversationTurnRequest,
     HealthResponse,
     ImageAttachmentRequest,
     RAGQueryRequest,
@@ -8,6 +9,8 @@ from .rag import (
 )
 
 __all__ = [
+    "ConversationTurnRequest",
+    "DocumentDeleteResponse",
     "DocumentUploadResponse",
     "HealthResponse",
     "ImageAttachmentRequest",

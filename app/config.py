@@ -62,12 +62,22 @@ class Settings(BaseSettings):
     api_max_upload_size_mb: int = 25
     # Number of ranked sources returned to clients. Retrieval results
     # arrive best-first (RRF primary results, then related chunks),
-    # so this keeps the strongest matches only.
-    api_max_sources: int = 1
+    # so this keeps the strongest matches only. Per-request override
+    # is available via the `max_sources` query field.
+    api_max_sources: int = 3
     # Max size of an image attached to a chat message. It travels
     # base64-encoded inside the JSON body (~33% larger) and is sent
     # to the vision model, so keep it modest.
     api_max_query_image_size_mb: int = 5
+    # Shared secret required on every /api/v1 request. Empty disables
+    # authentication entirely, which is the right default for local
+    # development and the wrong one anywhere else.
+    api_key: str = ""
+    # Rate limit, per client IP, over a sliding window. Generation is
+    # expensive, so an unthrottled endpoint is a denial-of-service
+    # on your own provider budget.
+    api_rate_limit_requests: int = 30
+    api_rate_limit_window_seconds: int = 60
 
     # ------------------------------------------------------------
     # Retrieval
@@ -75,6 +85,12 @@ class Settings(BaseSettings):
     # Visually similar document images sent to the model alongside
     # an image the user attached to their question.
     retrieval_visual_top_k: int = 2
+    # Minimum share of a query's (rarity-weighted) content terms that
+    # must exist in the index for a *text* question to be answered.
+    # Below this the request is treated as off-topic and refused
+    # without calling the model. Calibrated against eval/ so that no
+    # labeled answerable query is blocked; see eval/BASELINE.md.
+    retrieval_lexical_min_coverage: float = 0.30
 
     # ------------------------------------------------------------
     # Storage

@@ -9,7 +9,7 @@ import { API_BASE } from '../services/ragApi'
 import type { PendingImage } from '../services/ragApi'
 
 export default function ChatPage() {
-  const { messages, isLoading, ask, retry, clear } = useChat()
+  const { messages, isLoading, ask, retry, stop, clear } = useChat()
   const { mode, cycleTheme } = useTheme()
   const [uploadOpen, setUploadOpen] = useState(false)
   const [backendStatus, setBackendStatus] = useState<BackendStatus>('checking')
@@ -61,6 +61,18 @@ export default function ChatPage() {
       </main>
 
       {uploadOpen && <UploadPanel onClose={() => setUploadOpen(false)} />}
+
+      {/* A long generation should be interruptible: without this the
+          user can only wait out a model that is taking minutes. */}
+      {isLoading && (
+        <button
+          type="button"
+          onClick={stop}
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 rounded-full border border-line bg-surface/90 px-4 py-1.5 text-xs font-medium text-muted shadow-card backdrop-blur transition-colors hover:bg-surface-2 hover:text-ink"
+        >
+          Stop generating
+        </button>
+      )}
 
       {messages.length > 1 && (
         <button

@@ -1,6 +1,7 @@
 import threading
 from typing import Any
 
+from app.config import settings
 from app.ingestion.chunk_schemas import Chunk
 
 from .embeddings.clip_embedder import CLIPEmbedder
@@ -191,6 +192,25 @@ class MultimodalRetriever:
         # New text invalidates the in-memory lexical index. Drop it
         # so freshly ingested chunks are immediately searchable.
         self.invalidate_lexical_index()
+
+    def delete_document(self, document_id: str) -> int:
+        """
+        Remove every chunk belonging to a document.
+
+        Returns the number of chunks removed, so the caller can tell
+        an empty delete (unknown id) from a real one.
+        """
+        removed = self.vector_store.delete_where(
+            {"document_id": document_id}
+        )
+
+        # The lexical index still holds the deleted documents' text,
+        # so they would keep matching BM25 queries until it is
+        # rebuilt. Dropping it is the simplest correct response; it
+        # is rebuilt lazily on the next search.
+        self.invalidate_lexical_index()
+
+        return removed
 
     # ============================================================
     # MODALITY-SPECIFIC SEARCH
@@ -658,8 +678,19 @@ class MultimodalRetriever:
         # The gate only makes sense when there is text to match
         # against. A corpus of images has no text chunks, so the
         # gate is skipped and CLIP drives retrieval on its own.
-        if not lexical_results and self.lexical_index.documents:
-            return []
+        if self.lexical_index.documents:
+            # Non-emptiness is not enough: one common word makes an
+            # unrelated question "match". Measured on this corpus, a
+            # coverage floor removes the worst off-topic answers at no
+            # cost in recall (see eval/BASELINE.md).
+            relevance = self.lexical_index.keyword_relevance(query)
+
+            if (
+                not lexical_results
+                or relevance["coverage"]
+                < settings.retrieval_lexical_min_coverage
+            ):
+                return []
 
         # --------------------------------------------------------
         # 5. RRF fusion

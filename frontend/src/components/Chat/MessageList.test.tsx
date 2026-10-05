@@ -34,6 +34,8 @@ describe('MessageList', () => {
             image_path: null,
             image_url: null,
             snippet: 'Dell Precision laptop with Intel Core i7.',
+            score: 0.032,
+            kind: 'document',
           },
         ],
       },

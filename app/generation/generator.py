@@ -1,3 +1,5 @@
+from collections.abc import Iterator
+
 from .base import BaseGenerator
 from .providers.base import BaseMultimodalProvider
 from .schemas import GenerationContext
@@ -35,4 +37,25 @@ class MultimodalGenerator(BaseGenerator):
             query=query,
             text_context=context.text_context,
             image_context=context.image_context,
+            conversation=context.conversation,
+        )
+
+    def stream(
+        self,
+        query: str,
+        context: GenerationContext,
+    ) -> Iterator[str]:
+        """
+        Yield the answer incrementally.
+
+        Mirrors generate() so both paths build the same context and
+        hand it to the same provider contract; the provider decides
+        whether tokens actually arrive one by one.
+        """
+
+        return self.provider.stream(
+            query=query,
+            text_context=context.text_context,
+            image_context=context.image_context,
+            conversation=context.conversation,
         )

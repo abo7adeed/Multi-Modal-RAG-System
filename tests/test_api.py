@@ -69,9 +69,11 @@ def test_rag_query_rejects_missing_query(rag_client):
 # --------------------------------------------------------------
 # RAG query: success
 # --------------------------------------------------------------
-def test_rag_query_returns_only_best_source(rag_client, fake_pipeline):
+def test_rag_query_returns_ranked_sources(rag_client, fake_pipeline):
+    from app.config import settings
+
     # Retrieval returns sources best-first; the API keeps the
-    # strongest match only.
+    # strongest matches, up to the configured limit.
     response = rag_client.post(
         "/api/v1/rag/query",
         json={"query": "What Dell products are shown?"},
@@ -80,10 +82,11 @@ def test_rag_query_returns_only_best_source(rag_client, fake_pipeline):
     assert response.status_code == 200
     body = response.json()
 
-    assert len(body["sources"]) == 1
+    assert 1 <= len(body["sources"]) <= settings.api_max_sources
     # The first ranked source is the text chunk on page 4.
     assert body["sources"][0]["chunk_id"] == "text-001"
     assert body["sources"][0]["page"] == 4
+    assert body["sources"][0]["kind"] == "document"
 
 
 def test_rag_query_source_limit_is_configurable(rag_client, monkeypatch):

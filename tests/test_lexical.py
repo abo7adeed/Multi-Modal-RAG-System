@@ -66,6 +66,36 @@ def test_results_are_ranked_and_scored():
     assert scores == sorted(scores, reverse=True)
 
 
+def test_keyword_relevance_is_high_for_grounded_query():
+    index = BM25Index(DOCUMENTS)
+
+    relevance = index.keyword_relevance("Dell OptiPlex desktop")
+
+    assert relevance["coverage"] == 1.0
+    assert relevance["matched"] == relevance["total"]
+    assert relevance["top_score"] > 0
+
+
+def test_keyword_relevance_penalises_absent_terms():
+    # Every content term is unknown to the corpus: the strongest
+    # possible signal that the question is off-topic.
+    index = BM25Index(DOCUMENTS)
+
+    relevance = index.keyword_relevance("cryptocurrency blockchain")
+
+    assert relevance["coverage"] == 0.0
+    assert relevance["top_score"] == 0.0
+
+
+def test_keyword_relevance_ignores_stopword_only_query():
+    index = BM25Index(DOCUMENTS)
+
+    relevance = index.keyword_relevance("the and of")
+
+    assert relevance["total"] == 0
+    assert relevance["coverage"] == 0.0
+
+
 def test_ignores_image_chunks_when_built_from_store():
     class FakeCollection:
         def get(self, include=None):

@@ -1,0 +1,60 @@
+# Multi-Modal RAG System - local/production stack.
+#
+#   docker compose up --build
+#
+# The frontend is served on http://localhost:5173 and proxies the API
+# to the backend, so the browser talks to a single origin.
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # A .env file is required: the provider API key is read at startup
+    # and the server refuses to start without it.
+    env_file:
+      - .env
+    environment:
+      # The compose service name, not localhost: the backend runs in
+      # its own container.
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      API_CORS_ORIGINS: ${API_CORS_ORIGINS:-http://localhost:5173}
+    ports:
+      # Exposed for direct API access; the frontend does not need it.
+      - "8000:8000"
+    volumes:
+      - vector-store:/data/vector_store
+      - uploads:/data/uploads
+      - processed-images:/data/processed/images
+      # CLIP weights: keeps startup fast across rebuilds.
+      - hf-cache:/cache/huggingface
+    depends_on:
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # Local Ollama. Remove this service and point OLLAMA_BASE_URL at
+  # https://ollama.com to use a hosted model instead.
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  vector-store:
+  uploads:
+  processed-images:
+  hf-cache:
+  ollama-models:

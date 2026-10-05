@@ -159,6 +159,7 @@ class OpenAICompatibleProvider(BaseMultimodalProvider):
         query: str,
         text_context: list[dict[str, Any]],
         image_context: list[dict[str, Any]],
+        conversation: str | None = None,
     ) -> list[dict[str, Any]]:
         # An attached image is the subject of the question, so it is
         # sent first and called out explicitly: models treat an
@@ -184,15 +185,26 @@ class OpenAICompatibleProvider(BaseMultimodalProvider):
             else SYSTEM_PROMPT
         )
 
+        text = template.format(
+            query=query,
+            text_context_text=self._build_text_context(text_context),
+        )
+
+        if conversation:
+            # Earlier turns let the model resolve a follow-up
+            # ("what about its warranty?"). They are context only:
+            # the grounding rules still bind the answer to the
+            # retrieved documents below.
+            text += (
+                "\n\nEarlier in this conversation "
+                "(for resolving references only):\n"
+                f"{conversation}"
+            )
+
         content: list[dict[str, Any]] = [
             {
                 "type": "text",
-                "text": template.format(
-                    query=query,
-                    text_context_text=self._build_text_context(
-                        text_context
-                    ),
-                ),
+                "text": text,
             }
         ]
 
@@ -259,6 +271,7 @@ class OpenAICompatibleProvider(BaseMultimodalProvider):
         query: str,
         text_context: list[dict[str, Any]],
         image_context: list[dict[str, Any]],
+        conversation: str | None = None,
     ) -> str:
         if not self._configured_key:
             raise ProviderError(
@@ -270,6 +283,7 @@ class OpenAICompatibleProvider(BaseMultimodalProvider):
             query=query,
             text_context=text_context,
             image_context=image_context,
+            conversation=conversation,
         )
 
         try:
@@ -308,3 +322,84 @@ class OpenAICompatibleProvider(BaseMultimodalProvider):
             ) from exc
 
         return response.choices[0].message.content or ""
+
+    # ------------------------------------------------------------
+    # Streaming
+    # ------------------------------------------------------------
+
+    def _translate_sdk_error(self, exc: Exception) -> ProviderError:
+        """Map an SDK exception onto the provider error taxonomy."""
+        if isinstance(exc, RateLimitError):
+            return ProviderRateLimitError(
+                f"{self.provider_name} rate limit exceeded "
+                f"for model: {self.model}"
+            )
+        if isinstance(exc, APITimeoutError):
+            return ProviderTimeoutError(
+                f"{self.provider_name} request timed out "
+                f"for model: {self.model}"
+            )
+        if isinstance(exc, APIConnectionError):
+            return ProviderError(
+                f"Could not connect to {self.provider_name} "
+                f"for model: {self.model}"
+            )
+        if isinstance(exc, APIStatusError):
+            return ProviderError(
+                f"{self.provider_name} returned an error "
+                f"for model: {self.model}"
+            )
+        return ProviderError(
+            f"{self.provider_name} streaming failed "
+            f"for model: {self.model}"
+        )
+
+    def stream(
+        self,
+        query: str,
+        text_context: list[dict[str, Any]],
+        image_context: list[dict[str, Any]],
+        conversation: str | None = None,
+    ):
+        """
+        Yield the answer token-by-token.
+
+        Errors can surface mid-stream, so they are raised as provider
+        errors here; the pipeline converts them into an SSE error
+        event rather than letting a truncated answer look complete.
+        """
+        if not self._configured_key:
+            raise ProviderError(
+                f"{self.provider_name} API key is not configured. "
+                "Set it in the environment."
+            )
+
+        content = self._build_content(
+            query=query,
+            text_context=text_context,
+            image_context=image_context,
+            conversation=conversation,
+        )
+
+        try:
+            stream = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": content,
+                    }
+                ],
+                stream=True,
+            )
+
+            for chunk in stream:
+                if not chunk.choices:
+                    continue
+                delta = chunk.choices[0].delta
+                text = getattr(delta, "content", None)
+                if text:
+                    yield text
+
+        except Exception as exc:  # noqa: BLE001 - re-raised below
+            raise self._translate_sdk_error(exc) from exc

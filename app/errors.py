@@ -109,6 +109,12 @@ class DocumentIngestionError(RAGPipelineError):
     )
 
 
+class DocumentNotFoundError(RAGPipelineError):
+    """Raised when a document id matches nothing in the index."""
+
+    user_message = "No document with that id is indexed."
+
+
 def log_pipeline_error(
     error: Exception,
     *,

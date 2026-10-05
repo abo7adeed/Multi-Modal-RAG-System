@@ -468,3 +468,217 @@ def test_ollama_timeout_is_translated(monkeypatch):
             text_context=[],
             image_context=[],
         )
+
+# --------------------------------------------------------------
+# Streaming
+# --------------------------------------------------------------
+def test_base_stream_defaults_to_one_chunk():
+    """
+    A provider with no streaming support must still stream.
+
+    The API always speaks SSE, so the default implementation emits the
+    buffered answer as a single chunk instead of failing - a
+    text-only gateway degrades to "all at once", not to an error.
+    """
+    from app.generation.providers.base import BaseMultimodalProvider
+
+    class BufferedOnly(BaseMultimodalProvider):
+        def generate(
+            self, query, text_context, image_context, conversation=None
+        ):
+            return "complete answer"
+
+    chunks = list(
+        BufferedOnly().stream(
+            query="q",
+            text_context=[],
+            image_context=[],
+        )
+    )
+
+    assert chunks == ["complete answer"]
+
+
+def test_ollama_stream_yields_deltas(monkeypatch):
+    monkeypatch.setattr(
+        settings, "ollama_base_url", "http://localhost:11434"
+    )
+
+    provider = OllamaMultimodalProvider()
+
+    captured: dict[str, Any] = {}
+
+    def fake_chat(**kwargs):
+        captured.update(kwargs)
+        return iter(
+            [
+                {"message": {"content": "Dell "}},
+                {"message": {"content": "Precision"}},
+                {"message": {"content": ""}},
+            ]
+        )
+
+    provider.client.chat = fake_chat
+
+    chunks = list(
+        provider.stream(
+            query="What is shown?",
+            text_context=[{"page": 1, "content": "text"}],
+            image_context=[],
+        )
+    )
+
+    assert captured["stream"] is True
+    # Empty deltas are dropped: forwarding them would make the client
+    # render stray separators.
+    assert chunks == ["Dell ", "Precision"]
+
+
+def test_ollama_stream_prompts_identically_to_generate(
+    monkeypatch, tmp_path
+):
+    """Both paths must send the same messages, or answers diverge."""
+    monkeypatch.setattr(
+        settings, "ollama_base_url", "http://localhost:11434"
+    )
+
+    attachment = tmp_path / "attachment.jpg"
+    attachment.write_bytes(b"user-photo")
+
+    provider = OllamaMultimodalProvider()
+
+    buffered: dict[str, Any] = {}
+    streamed: dict[str, Any] = {}
+
+    provider.client.chat = lambda **kw: buffered.update(kw) or {
+        "message": {"content": "ok"}
+    }
+    provider.generate(
+        query="What is this?",
+        text_context=[],
+        image_context=[
+            {"image_path": str(attachment), "kind": "attachment"}
+        ],
+    )
+
+    provider.client.chat = lambda **kw: streamed.update(kw) or iter([])
+    list(
+        provider.stream(
+            query="What is this?",
+            text_context=[],
+            image_context=[
+                {"image_path": str(attachment), "kind": "attachment"}
+            ],
+        )
+    )
+
+    assert buffered["messages"] == streamed["messages"]
+
+
+def test_ollama_stream_translates_mid_stream_error(monkeypatch):
+    """
+    A failure after some text has been emitted must still raise.
+
+    Ending the generator quietly would leave the client showing a
+    half-finished answer that looks complete.
+    """
+    monkeypatch.setattr(
+        settings, "ollama_base_url", "http://localhost:11434"
+    )
+
+    provider = OllamaMultimodalProvider()
+
+    def failing_chat(**kwargs):
+        def generate():
+            yield {"message": {"content": "Dell "}}
+            raise httpx.ReadTimeout("too slow")
+
+        return generate()
+
+    provider.client.chat = failing_chat
+
+    stream = provider.stream(
+        query="q", text_context=[], image_context=[]
+    )
+
+    assert next(stream) == "Dell "
+
+    with pytest.raises(BaseProviderTimeoutError):
+        next(stream)
+
+
+class _FakeDelta:
+    def __init__(self, content):
+        self.content = content
+
+
+class _FakeChoice:
+    def __init__(self, content):
+        self.delta = _FakeDelta(content)
+
+
+class _FakeChunk:
+    def __init__(self, content):
+        self.choices = [_FakeChoice(content)]
+
+
+class _FakeStreamCompletions:
+    def __init__(self):
+        self.kwargs = None
+
+    def create(self, **kwargs):
+        self.kwargs = kwargs
+        if kwargs.get("stream"):
+            return iter(
+                [
+                    _FakeChunk("Dell "),
+                    _FakeChunk(None),
+                    _FakeChunk("Precision"),
+                ]
+            )
+        return None
+
+
+class _FakeStreamClient:
+    def __init__(self):
+        self.completions = _FakeStreamCompletions()
+
+        class Chat:
+            completions = self.completions
+
+        self.chat = Chat()
+        self.api_key = "key"
+
+
+def test_openai_compatible_stream_yields_deltas(monkeypatch):
+    monkeypatch.setattr(settings, "openrouter_api_key", "key")
+
+    provider = OpenRouterMultimodalProvider()
+    fake_client = _FakeStreamClient()
+    provider.client = fake_client
+
+    chunks = list(
+        provider.stream(
+            query="q",
+            text_context=[],
+            image_context=[],
+        )
+    )
+
+    assert fake_client.completions.kwargs["stream"] is True
+    assert chunks == ["Dell ", "Precision"]
+
+
+def test_openai_compatible_stream_requires_api_key(monkeypatch):
+    monkeypatch.setattr(settings, "opencode_api_key", "")
+
+    provider = OpenCodeMultimodalProvider()
+
+    with pytest.raises(ProviderError):
+        list(
+            provider.stream(
+                query="q",
+                text_context=[],
+                image_context=[],
+            )
+        )

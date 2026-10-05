@@ -194,7 +194,7 @@ def test_temporary_attachment_file_is_deleted_when_generation_fails():
 # --------------------------------------------------------------
 # Visual enrichment
 # --------------------------------------------------------------
-def test_visual_matches_are_retrieved_from_the_index():
+def test_visual_matches_support_the_answer_but_are_not_cited():
     retriever = FakeRetriever(
         visual=[
             {
@@ -214,7 +214,18 @@ def test_visual_matches_are_retrieved_from_the_index():
     pipeline = build_pipeline(retriever, generator)
     response = pipeline.run("Is this the same?", image=attachment())
 
-    assert response.sources[0].chunk_id == "image-001"
+    # The lookalike page reaches the model as supporting context...
+    image_context = generator.contexts[0].image_context
+    assert any(
+        item.get("kind") == "visual_match"
+        and item.get("chunk_id") == "image-001"
+        for item in image_context
+    )
+
+    # ...but it is never reported as a source: merely resembling the
+    # user's photo does not mean it grounded the answer, and citing it
+    # would point the user at an unrelated catalog page.
+    assert response.sources == []
 
 
 def test_visual_search_uses_the_configured_limit():

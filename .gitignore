@@ -27,6 +27,9 @@ Thumbs.db
 data/vector_store/
 data/processed/
 
+# Local demo recordings (large binaries)
+demo/
+
 # Logs
 *.log
 

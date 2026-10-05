@@ -41,6 +41,7 @@ class ContextBuilder:
         query: str,
         results: list[dict[str, Any]],
         attachments: list[dict[str, str]] | None = None,
+        conversation: str | None = None,
     ) -> GenerationContext:
         text_context = []
         image_context = []
@@ -85,6 +86,14 @@ class ContextBuilder:
             # the result-level "source" is only the RRF provenance
             # tag ("retrieved" / "related"). Prefer the document so
             # clients can attribute answers to a real file.
+            # Page images the user's attachment merely resembles are
+            # supporting context, not evidence: they must never be
+            # reported as a source, or a photo question would appear to
+            # cite an unrelated catalog page.
+            is_visual_match = (
+                result.get("source") == "visual_match"
+            )
+
             source = document_name(
                 metadata.get("source")
             ) or result.get(
@@ -133,9 +142,16 @@ class ContextBuilder:
                         "page": page_number,
                         "image_path": image_path,
                         "source": source,
-                        "kind": "retrieved",
+                        "kind": (
+                            "visual_match"
+                            if is_visual_match
+                            else "retrieved"
+                        ),
                     }
                 )
+
+                if is_visual_match:
+                    continue
 
             # ----------------------------------------------------
             # Unified source
@@ -156,6 +172,8 @@ class ContextBuilder:
                         if content_type == "text"
                         else None
                     ),
+                    score=result.get("score"),
+                    kind="document",
                 )
             )
 
@@ -164,4 +182,5 @@ class ContextBuilder:
             text_context=text_context,
             image_context=image_context,
             sources=sources,
+            conversation=conversation,
         )

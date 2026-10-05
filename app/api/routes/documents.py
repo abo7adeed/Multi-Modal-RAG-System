@@ -10,9 +10,13 @@ from fastapi import (
 )
 
 from app.api.dependencies import AppState, get_rag_state
-from app.api.schemas import DocumentUploadResponse
+from app.api.schemas import (
+    DocumentDeleteResponse,
+    DocumentUploadResponse,
+)
 from app.errors import (
     DocumentIngestionError,
+    DocumentNotFoundError,
     InvalidRequestError,
 )
 
@@ -51,3 +55,35 @@ async def upload_document(
     )
 
     return DocumentUploadResponse(**result)
+
+
+@router.delete(
+    "/documents/{document_id}",
+    response_model=DocumentDeleteResponse,
+    status_code=200,
+)
+async def delete_document(
+    document_id: str,
+    rag: AppState = Depends(get_rag_state),
+) -> DocumentDeleteResponse:
+    """
+    Remove a document and every chunk indexed from it.
+
+    404 rather than 200-with-zero when the id is unknown: a client
+    retrying a delete must be able to tell "already gone" from
+    "never existed".
+    """
+    try:
+        result = await rag.ingestion_service.delete_document(document_id)
+    except InvalidRequestError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=error.user_message,
+        ) from error
+    except DocumentNotFoundError as error:
+        raise HTTPException(
+            status_code=404,
+            detail=error.user_message,
+        ) from error
+
+    return DocumentDeleteResponse(**result)

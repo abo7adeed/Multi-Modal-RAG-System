@@ -72,3 +72,33 @@ class ChromaVectorStore:
 
     def count(self) -> int:
         return self.collection.count()
+
+    def delete_where(self, where: dict[str, Any]) -> int:
+        """
+        Delete every chunk matching a metadata filter.
+
+        Returns the number of chunks removed.
+
+        Chroma requires the ids, so they are looked up first: deleting
+        a whole document is by definition a bulk operation, and the
+        filter is built server-side rather than by scanning every
+        chunk in Python.
+        """
+        matches = self.collection.get(
+            where=where,
+            include=[],
+        )
+        ids = matches.get("ids") or []
+
+        if not ids:
+            return 0
+
+        self.collection.delete(ids=ids)
+        return len(ids)
+
+    def list_metadata(self, where: dict[str, Any] | None = None):
+        """Return stored metadata, for tooling and diagnostics."""
+        return self.collection.get(
+            where=where,
+            include=["metadatas"],
+        )

@@ -71,11 +71,20 @@ export function MessageList({
   onRetry,
   onSuggestion,
 }: MessageListProps) {
+  // Keyed on the streamed text as well, so the view keeps following
+  // the answer as it grows.
+  const lastMessage = messages[messages.length - 1]
   const scrollRef = useAutoScroll<HTMLDivElement>(
-    `${messages.length}:${isLoading}`,
+    `${messages.length}:${isLoading}:${lastMessage?.content.length ?? 0}`,
   )
 
   const visible = messages.filter((message) => message.id !== 'welcome')
+
+  // Once tokens start arriving they are shown in the bubble itself,
+  // so the bouncing dots would be a second, contradictory indicator.
+  const awaitingFirstToken = isLoading && !visible.some(
+    (message) => message.isStreaming && message.content.length > 0,
+  )
 
   return (
     <div
@@ -98,7 +107,7 @@ export function MessageList({
             }
           />
         ))}
-        {isLoading && <TypingIndicator />}
+        {awaitingFirstToken && <TypingIndicator />}
       </div>
     </div>
   )

@@ -13,6 +13,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from app.api.dependencies import lifespan
+from app.api.middleware import (
+    AccessLogMiddleware,
+    APIKeyAuthMiddleware,
+    RateLimitMiddleware,
+    RequestContextMiddleware,
+)
 from app.api.routes import documents_router, rag_router
 from app.api.services import MediaService
 from app.config import settings
@@ -45,9 +51,22 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=True,
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "DELETE"],
         allow_headers=["*"],
     )
+
+    # ----------------------------------------------------------
+    # Middleware
+    #
+    # Added last-first, because Starlette runs the most recently
+    # added middleware outermost. The resulting order is the one
+    # the comments assume: identify, then authenticate, then
+    # throttle, then handle, then log.
+    # ----------------------------------------------------------
+    app.add_middleware(AccessLogMiddleware)
+    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(APIKeyAuthMiddleware)
+    app.add_middleware(RequestContextMiddleware)
 
     # ----------------------------------------------------------
     # Routers

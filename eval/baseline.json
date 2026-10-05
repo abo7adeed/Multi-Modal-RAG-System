@@ -1,0 +1,413 @@
+{
+  "metrics": {
+    "k": 5,
+    "answerable_count": 20,
+    "off_topic_count": 5,
+    "recall_at_k": 0.9,
+    "mrr": 0.7583333333333333,
+    "false_block_rate": 0.0,
+    "false_answer_rate": 0.8
+  },
+  "rows": [
+    {
+      "id": "laptops-paraphrase",
+      "query": "Which laptop line blends security, manageability and reliability into a thin design?",
+      "category": "paraphrase",
+      "answerable": true,
+      "expect_pages": [
+        1,
+        6
+      ],
+      "retrieved_pages": [
+        9,
+        1,
+        6,
+        9,
+        9
+      ]
+    },
+    {
+      "id": "ultrabook-paraphrase",
+      "query": "Which series is described as Ultrabook performance packed into a slim profile?",
+      "category": "paraphrase",
+      "answerable": true,
+      "expect_pages": [
+        1,
+        6
+      ],
+      "retrieved_pages": [
+        1,
+        6,
+        6,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "tablets-paraphrase",
+      "query": "What tablet can replace a laptop for people working on the move?",
+      "category": "paraphrase",
+      "answerable": true,
+      "expect_pages": [
+        3,
+        4
+      ],
+      "retrieved_pages": [
+        3,
+        3,
+        1,
+        3,
+        3
+      ]
+    },
+    {
+      "id": "optiplex-paraphrase",
+      "query": "Which desktop family is built to be easily managed in a large office?",
+      "category": "paraphrase",
+      "answerable": true,
+      "expect_pages": [
+        12,
+        15
+      ],
+      "retrieved_pages": [
+        12,
+        2,
+        2,
+        12,
+        12
+      ]
+    },
+    {
+      "id": "space-saving-paraphrase",
+      "query": "Which desktops are described as a space-saving choice?",
+      "category": "paraphrase",
+      "answerable": true,
+      "expect_pages": [
+        12,
+        15
+      ],
+      "retrieved_pages": [
+        16,
+        17,
+        12,
+        16,
+        16
+      ]
+    },
+    {
+      "id": "monitors-paraphrase",
+      "query": "What does the catalogue offer for true-to-life colour accuracy on screen?",
+      "category": "paraphrase",
+      "answerable": true,
+      "expect_pages": [
+        20
+      ],
+      "retrieved_pages": [
+        20,
+        10,
+        17,
+        20,
+        20
+      ]
+    },
+    {
+      "id": "support-paraphrase",
+      "query": "Is there a support plan that covers hardware around the clock?",
+      "category": "paraphrase",
+      "answerable": true,
+      "expect_pages": [
+        21,
+        22
+      ],
+      "retrieved_pages": [
+        21,
+        2,
+        21,
+        21,
+        2
+      ]
+    },
+    {
+      "id": "heavy-design-paraphrase",
+      "query": "Which machines are aimed at people doing demanding design work?",
+      "category": "paraphrase",
+      "answerable": true,
+      "expect_pages": [
+        17,
+        18,
+        19
+      ],
+      "retrieved_pages": [
+        17,
+        12,
+        10,
+        17,
+        17
+      ]
+    },
+    {
+      "id": "lost-device-paraphrase",
+      "query": "What keeps company data safe if an employee loses their device?",
+      "category": "paraphrase",
+      "answerable": true,
+      "expect_pages": [
+        1
+      ],
+      "retrieved_pages": [
+        1,
+        6,
+        11,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "delivery-paraphrase",
+      "query": "Where are the conditions about how quickly products ship?",
+      "category": "paraphrase",
+      "answerable": true,
+      "expect_pages": [
+        22
+      ],
+      "retrieved_pages": [
+        22,
+        1,
+        22,
+        22,
+        1
+      ]
+    },
+    {
+      "id": "choose-support-paraphrase",
+      "query": "Can a business build a support package that fits how it works?",
+      "category": "paraphrase",
+      "answerable": true,
+      "expect_pages": [
+        21
+      ],
+      "retrieved_pages": [
+        21,
+        1,
+        21,
+        21
+      ]
+    },
+    {
+      "id": "latitude-exact",
+      "query": "Latitude 7000 Series",
+      "category": "exact",
+      "answerable": true,
+      "expect_pages": [
+        1,
+        6
+      ],
+      "retrieved_pages": [
+        9,
+        1,
+        6,
+        9,
+        9
+      ]
+    },
+    {
+      "id": "optiplex-exact",
+      "query": "OptiPlex",
+      "category": "exact",
+      "answerable": true,
+      "expect_pages": [
+        12,
+        15
+      ],
+      "retrieved_pages": [
+        12,
+        2,
+        2,
+        12,
+        12
+      ]
+    },
+    {
+      "id": "venue-exact",
+      "query": "Dell Venue 11 Pro",
+      "category": "exact",
+      "answerable": true,
+      "expect_pages": [
+        3
+      ],
+      "retrieved_pages": [
+        5,
+        23,
+        3,
+        5,
+        23
+      ]
+    },
+    {
+      "id": "prosupport-exact",
+      "query": "ProSupport",
+      "category": "exact",
+      "answerable": true,
+      "expect_pages": [
+        21
+      ],
+      "retrieved_pages": [
+        2,
+        1,
+        5,
+        2,
+        2
+      ]
+    },
+    {
+      "id": "ultrasharp-exact",
+      "query": "UltraSharp monitor",
+      "category": "exact",
+      "answerable": true,
+      "expect_pages": [
+        20
+      ],
+      "retrieved_pages": [
+        20,
+        20,
+        17,
+        20,
+        20
+      ]
+    },
+    {
+      "id": "ordercode-exact",
+      "query": "Order code",
+      "category": "exact",
+      "answerable": true,
+      "expect_pages": [
+        5,
+        13,
+        14,
+        15
+      ],
+      "retrieved_pages": [
+        15,
+        1,
+        14,
+        15,
+        15
+      ]
+    },
+    {
+      "id": "intel-exact",
+      "query": "4th Gen Intel Core i5 processor",
+      "category": "exact",
+      "answerable": true,
+      "expect_pages": [
+        1,
+        3,
+        6
+      ],
+      "retrieved_pages": [
+        12,
+        1,
+        1,
+        12,
+        12
+      ]
+    },
+    {
+      "id": "workstation-exact",
+      "query": "Precision workstation laptops",
+      "category": "exact",
+      "answerable": true,
+      "expect_pages": [
+        17,
+        18,
+        19
+      ],
+      "retrieved_pages": [
+        10,
+        11,
+        2,
+        10,
+        10
+      ]
+    },
+    {
+      "id": "accessories-paraphrase",
+      "query": "Does the catalogue list add-on accessories such as bags?",
+      "category": "paraphrase",
+      "answerable": true,
+      "expect_pages": [
+        10
+      ],
+      "retrieved_pages": [
+        10,
+        10,
+        6,
+        10,
+        10
+      ]
+    },
+    {
+      "id": "offtopic-france",
+      "query": "What is the capital of France?",
+      "category": "off_topic",
+      "answerable": false,
+      "expect_pages": [],
+      "retrieved_pages": []
+    },
+    {
+      "id": "offtopic-worldcup",
+      "query": "Who won the 2022 FIFA World Cup?",
+      "category": "off_topic",
+      "answerable": false,
+      "expect_pages": [],
+      "retrieved_pages": [
+        6,
+        1,
+        12,
+        6,
+        6
+      ]
+    },
+    {
+      "id": "offtopic-python",
+      "query": "How do I create a Python virtual environment?",
+      "category": "off_topic",
+      "answerable": false,
+      "expect_pages": [],
+      "retrieved_pages": [
+        1,
+        1,
+        17,
+        17,
+        17
+      ]
+    },
+    {
+      "id": "offtopic-recipe",
+      "query": "What is the best recipe for banana bread?",
+      "category": "off_topic",
+      "answerable": false,
+      "expect_pages": [],
+      "retrieved_pages": [
+        17,
+        1,
+        17,
+        17,
+        17
+      ]
+    },
+    {
+      "id": "offtopic-joke",
+      "query": "Tell me a joke about cats.",
+      "category": "off_topic",
+      "answerable": false,
+      "expect_pages": [],
+      "retrieved_pages": [
+        22,
+        22,
+        10,
+        22,
+        22
+      ]
+    }
+  ]
+}
